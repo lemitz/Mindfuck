@@ -85,7 +85,7 @@ Mindfuck не обновляется сам. APK, подписанный дру�
 
 ## Разработка
 
-Нужны JDK 17+ (лучше 21) и Android SDK с API 36. Путь к SDK укажи в `local.properties` (`sdk.dir=...`).
+Нужны JDK 17+ (лучше 21) и Android SDK с API 37. Путь к SDK укажи в `local.properties` (`sdk.dir=...`).
 
 ```bash
 ./gradlew :app:testDebugUnitTest     # русские формулировки отчёта, склейка периодов, имена файлов

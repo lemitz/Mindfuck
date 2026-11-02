@@ -1,11 +1,11 @@
 [versions]
-agp = "8.12.3"
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.28"
-coreKtx = "1.15.0"
-lifecycle = "2.8.7"
-activityCompose = "1.9.3"
-composeBom = "2024.12.01"
+agp = "9.5.0"
+kotlin = "2.4.21"
+ksp = "2.3.13"
+coreKtx = "1.19.1"
+lifecycle = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.09.00"
 room = "2.8.5"
 profileinstaller = "1.4.1"
 junit = "4.13.2"
@@ -30,6 +30,8 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+# AGP 9 compiles Kotlin itself ("built-in Kotlin"); this plugin is only put on the classpath
+# (apply false in the root build) so that AGP uses this Kotlin version instead of its bundled one.
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
