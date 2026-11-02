@@ -85,7 +85,7 @@ Mindfuck does not update itself. An APK signed with a different key cannot be in
 
 ## Development
 
-Requirements: JDK 17+ (21 recommended) and the Android SDK with API 36. Point `local.properties` at the SDK (`sdk.dir=...`).
+Requirements: JDK 17+ (21 recommended) and the Android SDK with API 37. Point `local.properties` at the SDK (`sdk.dir=...`).
 
 ```bash
 ./gradlew :app:testDebugUnitTest     # Russian wording of the report, period gluing, file names

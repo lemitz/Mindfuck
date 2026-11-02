@@ -1,6 +1,6 @@
 # Mindfuck — контекст для нового агента
 
-**Корень проекта:** `Z:\opencode\Mindfuck`. Android 14+ (minSdk 34), Kotlin, Jetpack Compose (Material 3), Room. Аналог eMoods: ежедневный лог настроения и симптомов, календарь, графики и PDF-отчёт на русском. Начните с [README.md](README.md).
+**Корень проекта:** `Z:\opencode\Mindfuck`. Android 14+ (minSdk 34, compileSdk 37), Kotlin, Jetpack Compose (Material 3), Room. Сборка: AGP 9 со встроенным Kotlin (плагина `org.jetbrains.kotlin.android` в модуле нет; в корне он лежит `apply false` только чтобы задать версию Kotlin), Gradle 9, KSP для Room. Аналог eMoods: ежедневный лог настроения и симптомов, календарь, графики и PDF-отчёт на русском. Начните с [README.md](README.md).
 
 ## Непереговорные требования пользователя
 
