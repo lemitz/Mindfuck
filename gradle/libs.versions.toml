@@ -6,7 +6,7 @@ coreKtx = "1.15.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2024.12.01"
-room = "2.6.1"
+room = "2.8.5"
 profileinstaller = "1.4.1"
 junit = "4.13.2"
 
