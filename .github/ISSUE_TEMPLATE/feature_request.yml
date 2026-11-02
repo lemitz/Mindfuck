@@ -1,0 +1,19 @@
+name: Idea
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mindfuck is a private, offline mood diary with a doctor-ready Russian PDF report. Ideas that keep data on the phone and logging a day quick are the easiest to accept.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like
+      description: The problem first, then what you imagine.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead

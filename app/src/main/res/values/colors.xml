@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark is the app default; the light theme is switched at runtime from Settings. -->
+    <color name="bg">#FF0E1216</color>
+    <!-- Launcher disc, same tone as the Rocket / FeatherW8 icons. -->
+    <color name="ic_launcher_background">#FF2A2A33</color>
+</resources>

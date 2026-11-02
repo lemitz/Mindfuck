@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work, looks wrong, or the PDF report is off
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please **do not paste real diary entries, notes or reports** here: issues are public. Describe the problem with made-up data.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you got instead. Screenshots help (with made-up data).
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Log Moods
+        - Calendar
+        - Graph
+        - PDF report
+        - Settings / backup
+        - Look / animations / theme
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "Mindfuck version (Settings, at the bottom), phone model and Android version."
+      placeholder: "Mindfuck 1.0.0 / realme GT 6, Android 15"
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Report period and options, whether it happens every time, anything that might matter.

@@ -1,0 +1,160 @@
+name: Build and release
+
+# - every pull request: unit tests, then the Android APK, attached to the run as an artifact
+#   (Actions -> the run -> Artifacts) so a change can be tested before it is merged
+# - merge to main: the same, then a GitHub Release v<VERSION> with the apk and SHA256SUMS.txt,
+#   but only if that tag does not exist yet - bump VERSION and RELEASE_NOTES.md in the pull request
+#   to ship a release, leave them alone and the merge only builds
+# - "Run workflow" button: build any branch on demand (never publishes)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  # A release run must never be cancelled half way; superseded pull request runs may be.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      publish: ${{ steps.meta.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check release metadata and decide whether to publish
+        id: meta
+        shell: pwsh
+        run: |
+          ./scripts/check-release.ps1
+          $version = (Get-Content VERSION -Raw).Trim()
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+          $publish = 'false'
+          if ($env:GITHUB_EVENT_NAME -eq 'push' -and $env:GITHUB_REF -eq 'refs/heads/main') {
+            git fetch --tags --quiet
+            if (git tag --list "v$version") {
+              Write-Host "::notice title=No release::v$version is already released. Bump VERSION and RELEASE_NOTES.md to publish a new one."
+            } else {
+              $publish = 'true'
+            }
+          }
+          "publish=$publish" >> $env:GITHUB_OUTPUT
+          Write-Host "version=$version publish=$publish"
+
+      - name: Tell the author whether merging will release
+        if: github.event_name == 'pull_request'
+        run: |
+          if git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- VERSION; then
+            echo "::notice title=No release::This pull request does not change VERSION, so merging it will build but not publish a release."
+          else
+            echo "::notice title=Release::VERSION changes to $(cat VERSION): merging this pull request will publish v$(cat VERSION)."
+          fi
+
+  android:
+    needs: meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # The runner image already ships the Android SDK; only the licences need accepting so that Gradle
+      # can download the platform and build tools the project asks for.
+      - name: Accept Android SDK licences
+        run: |
+          sdkmanager=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | head -n 1)
+          yes | "$sdkmanager" --licenses > /dev/null || true
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/mindfuck-release.jks"
+            {
+              echo "MINDFUCK_KEYSTORE_FILE=$RUNNER_TEMP/mindfuck-release.jks"
+              echo "MINDFUCK_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "MINDFUCK_KEY_ALIAS=$KEY_ALIAS"
+              echo "MINDFUCK_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Signing with the release keystore."
+          else
+            echo "::notice title=Android signing::No ANDROID_KEYSTORE_BASE64 secret (pull requests from forks never get it): the APK is signed with a throw-away debug key, so installing it over an app signed differently needs an uninstall first. See scripts/make-keystore.ps1."
+          fi
+
+      - name: Unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Build the APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Collect the APK
+        run: |
+          version='${{ needs.meta.outputs.version }}'
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/Mindfuck-$version-android.apk"
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    if: needs.meta.outputs.publish == 'true'
+    needs: [meta, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: release
+        run: |
+          sha256sum Mindfuck-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          gh release create "v$VERSION" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Mindfuck v$VERSION" \
+            --notes-file RELEASE_NOTES.md \
+            --generate-notes
