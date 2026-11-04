@@ -41,6 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mindfuck.app.data.Backup
+import com.mindfuck.app.data.Downloads
+import com.mindfuck.app.data.EmoodsImport
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material3.AlertDialog
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import com.mindfuck.app.data.CustomTracker
 import com.mindfuck.app.data.Medication
 import com.mindfuck.app.ui.ConfirmDialog
@@ -87,6 +93,12 @@ fun SettingsScreen(onBack: () -> Unit) {
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) pendingImport = uri
+    }
+    var pendingEmoods by remember { mutableStateOf<android.net.Uri?>(null) }
+    var emoodsBusy by remember { mutableStateOf(false) }
+    var emoodsResult by remember { mutableStateOf<Pair<String, String>?>(null) } // title to text
+    val emoodsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) pendingEmoods = uri
     }
 
     Scaffold(
@@ -178,6 +190,18 @@ fun SettingsScreen(onBack: () -> Unit) {
                         }
                     },
                 )
+                ListItem(
+                    leadingContent = { Icon(Icons.Outlined.History, null) },
+                    headlineContent = {
+                        TextButton(
+                            onClick = { emoodsLauncher.launch(arrayOf("*/*")) },
+                            enabled = !emoodsBusy,
+                        ) { Text(if (emoodsBusy) "Importing…" else "Import from eMoods (.emoods)") }
+                    },
+                    supportingContent = {
+                        Text("Adds your eMoods history. Days you already logged here are kept; only empty fields are filled in.")
+                    },
+                )
                 Text(
                     "All data stays on this device. Nothing is sent anywhere.",
                     Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -220,6 +244,53 @@ fun SettingsScreen(onBack: () -> Unit) {
             app.write { deleteTracker(t.id) }
         }
     }
+    pendingEmoods?.let { uri ->
+        ConfirmDialog(
+            title = "Import from eMoods?",
+            text = "Days from the eMoods export are added to your diary. Nothing is deleted: days you already logged " +
+                "keep their values and only get fields that are still empty. A backup of your current diary is " +
+                "saved to Downloads/Mindfuck first.",
+            confirm = "Import",
+            onDismiss = { pendingEmoods = null },
+        ) {
+            emoodsBusy = true
+            scope.launch {
+                val result = runCatching {
+                    withContext(Dispatchers.IO) {
+                        // 1. parse first: a wrong file fails here, before anything is touched
+                        val bytes = context.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+                        val data = EmoodsImport.read(bytes.inputStream())
+                        require(data.entries.isNotEmpty()) { "The export contains no days" }
+                        // 2. safety backup of the current diary; no backup, no import
+                        val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmm"))
+                        val backupName = "mindfuck_backup_before_emoods_$stamp.json"
+                        val json = Backup.export(repo.dao)
+                        check(Downloads.save(context, backupName, "application/json", json.toByteArray())) {
+                            "Could not save the safety backup, nothing was imported"
+                        }
+                        // 3. merge
+                        val plan = repo.importEmoods(data)
+                        val range = "${data.entries.first().date} – ${data.entries.last().date}"
+                        "eMoods export ($range): ${plan.summary}\n\nBackup of the diary before the import: Downloads/Mindfuck/$backupName"
+                    }
+                }
+                emoodsBusy = false
+                emoodsResult = result.fold(
+                    { "Import finished" to it },
+                    { "Import failed" to (it.message ?: it.toString()) },
+                )
+            }
+        }
+    }
+    emoodsResult?.let { (title, text) ->
+        AlertDialog(
+            onDismissRequest = { emoodsResult = null },
+            title = { Text(title) },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = { emoodsResult = null }) { Text("OK") } },
+        )
+    }
+
     pendingImport?.let { uri ->
         ConfirmDialog("Restore backup?", "This replaces ALL current data with the backup contents.", "Restore", { pendingImport = null }) {
             scope.launch {

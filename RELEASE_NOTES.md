@@ -1,24 +1,25 @@
-# Mindfuck v1.0.0
+# Mindfuck v1.1.0
 
-First release of Mindfuck, a private mood diary for Android 14+ in the spirit of eMoods, with a doctor-ready PDF report in Russian.
+Bring your eMoods history along.
 
-## What's inside
+## Changes
 
-- **Log Moods:** sleep, the day's most extreme depressed mood, elevated mood, irritability and anxiety (None / Mild / Moderate / Severe), psychotic symptoms and talk therapy (yes / no), your own tracking points, medications with the dose taken each day, and self-observation notes. Everything saves instantly.
-- **Calendar** coloured by the most severe symptom of each day.
-- **Graph** for 7, 30 or 90 days: sleep with its average, eMoods-style low-to-high marks, yes / no points, and medications with dose changes. Every chart has a legend.
-- **PDF report "Дневник настроения и симптомов"** for any period. The base report reproduces the paper diary: the 0-3 scale, the day table, the period summary in proper Russian and the last day's notes. Optionally add sleep, psychotic symptoms and therapy, medications with adherence and doses, custom points, charts and the notes of every day. Files are named `mindfuck_DDMMYY.pdf`, then `_v2`, `_v3`… for more reports on the same day; a copy goes to `Downloads/Mindfuck`.
-- Swipe between tabs, animated transitions, dark theme by default with a light theme in Settings, the display's fastest refresh rate, and Realme's *Real Choice* typeface throughout.
-- JSON backup and restore. No internet permission, no account, no cloud backup, no telemetry.
+- **Import from eMoods.** *Settings → Import from eMoods (.emoods)* reads the `export.emoods` file that eMoods' export creates and adds it to your diary:
+  - days you have not logged in Mindfuck are added with mood scales, sleep, psychotic symptoms, therapy and notes;
+  - **nothing is deleted or overwritten:** a day you already logged keeps its values and only gets the fields that are still empty; notes are appended line by line if they are not there yet;
+  - medications are matched by name, unknown ones are created with their eMoods dose, and intakes are added with the dose taken that day;
+  - importing the same file again changes nothing;
+  - before anything is touched, a full backup of the current diary is saved to `Downloads/Mindfuck/mindfuck_backup_before_emoods_<date>.json`, restorable with *Restore from backup*.
+- Built with AGP 9.5, Kotlin 2.4, compileSdk 37 and Compose BOM 2026.09.
 
 ## Downloads
 
-- `Mindfuck-1.0.0-android.apk` - the app (Android 14 or newer).
+- `Mindfuck-1.1.0-android.apk` - the app (Android 14 or newer).
 - `SHA256SUMS.txt` - checksum.
 
-Android asks you to allow installing from your browser or file manager. To verify the download in PowerShell, run `Get-FileHash .\Mindfuck-1.0.0-android.apk -Algorithm SHA256` and compare the result with `SHA256SUMS.txt`.
+Android asks you to allow installing from your browser or file manager. To verify the download in PowerShell, run `Get-FileHash .\Mindfuck-1.1.0-android.apk -Algorithm SHA256` and compare the result with `SHA256SUMS.txt`.
 
 ## Good to know
 
+- This APK is signed with the project's release key. If Android refuses to install it over your current Mindfuck ("conflicts with an existing package"), your copy was signed with an older test key: **export a backup first** (Settings → Export all data), then uninstall, install this version and restore the backup. Updates after that install normally.
 - Reports and backups are ordinary unencrypted files: share them only with people you mean to.
-- Uninstalling deletes the diary. Export a backup (Settings → Export all data) before reinstalling.

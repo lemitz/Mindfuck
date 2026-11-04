@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/lemitz/Mindfuck/releases"><img src="https://img.shields.io/badge/version-1.0.0-8ea6ff" alt="Версия 1.0.0"></a>
+  <a href="https://github.com/lemitz/Mindfuck/releases"><img src="https://img.shields.io/badge/version-1.1.0-8ea6ff" alt="Версия 1.1.0"></a>
   <img src="https://img.shields.io/badge/platform-Android%2014%2B-3ddc84" alt="Android 14+">
   <img src="https://img.shields.io/badge/built%20with-Kotlin%20%2B%20Compose-7f52ff" alt="Kotlin и Jetpack Compose">
   <img src="https://img.shields.io/badge/network-none-2ea043" alt="Без доступа к сети">
@@ -71,6 +71,7 @@ Mindfuck для тех, кто отслеживает биполярное ра�
 - Запрашивает у экрана самый быстрый режим (120 Гц и выше, если панель умеет) и не нагружает отрисовку, поэтому прокрутка и свайпы плавные
 - Шрифт Realme *Real Choice* везде: в приложении и в PDF
 - Резервная копия и восстановление всего дневника одним JSON-файлом
+- **Импорт из eMoods:** выбираешь файл `export.emoods`, и история из eMoods добавляется в дневник. Ничего не удаляется и не перезаписывается: уже заполненные дни сохраняют свои значения и получают только пустые поля, лекарства сопоставляются по названию, а перед импортом бэкап дневника сохраняется в `Downloads/Mindfuck`
 
 > **Это медицинские данные.** Mindfuck никуда их не отправляет, но PDF-отчёты и JSON-бэкапы, которые ты создаёшь, это обычные незашифрованные файлы. Отдавай их только тем, кому собирался. См. [SECURITY.md](SECURITY.md).
 
@@ -79,7 +80,7 @@ Mindfuck для тех, кто отслеживает биполярное ра�
 Скачай со страницы [Releases](https://github.com/lemitz/Mindfuck/releases):
 
 - `Mindfuck-<версия>-android.apk` - открой на телефоне и разреши установку из браузера или файлового менеджера. Android 14 или новее.
-- `SHA256SUMS.txt` - контрольные суммы. В PowerShell: `Get-FileHash .\Mindfuck-1.0.0-android.apk -Algorithm SHA256`.
+- `SHA256SUMS.txt` - контрольные суммы. В PowerShell: `Get-FileHash .\Mindfuck-1.1.0-android.apk -Algorithm SHA256`.
 
 Mindfuck не обновляется сам. APK, подписанный другим ключом, не встанет поверх установленного, а удаление приложения стирает дневник: **сначала сделай бэкап** (Settings → Export all data).
 
