@@ -1,23 +1,19 @@
-# Mindfuck v1.1.0
+# Mindfuck v1.2.0
 
-Bring your eMoods history along.
+Reports in English.
 
 ## Changes
 
-- **Import from eMoods.** *Settings → Import from eMoods (.emoods)* reads the `export.emoods` file that eMoods' export creates and adds it to your diary:
-  - days you have not logged in Mindfuck are added with mood scales, sleep, psychotic symptoms, therapy and notes;
-  - **nothing is deleted or overwritten:** a day you already logged keeps its values and only gets the fields that are still empty; notes are appended line by line if they are not there yet;
-  - medications are matched by name, unknown ones are created with their eMoods dose, and intakes are added with the dose taken that day;
-  - importing the same file again changes nothing;
-  - before anything is touched, a full backup of the current diary is saved to `Downloads/Mindfuck/mindfuck_backup_before_emoods_<date>.json`, restorable with *Restore from backup*.
-- Built with AGP 9.5, Kotlin 2.4, compileSdk 37 and Compose BOM 2026.09.
+- **Report language.** The dialog shown before every report now starts with *Report language: Русский / English*. The English report has the same layout as the Russian one: value scale, day-by-day table, summary by period, sleep, medications, charts and self-observation notes, with English dates ("October 18–24, 2026", "Oct 20–21: severe.").
+- The choice is remembered together with the selected sections, so the next report uses the same language. Russian stays the default.
+- Your notes and the names of your custom tracking points and medications go into the report exactly as you typed them, in either language.
 
 ## Downloads
 
-- `Mindfuck-1.1.0-android.apk` - the app (Android 14 or newer).
+- `Mindfuck-1.2.0-android.apk` - the app (Android 14 or newer).
 - `SHA256SUMS.txt` - checksum.
 
-Android asks you to allow installing from your browser or file manager. To verify the download in PowerShell, run `Get-FileHash .\Mindfuck-1.1.0-android.apk -Algorithm SHA256` and compare the result with `SHA256SUMS.txt`.
+Android asks you to allow installing from your browser or file manager. To verify the download in PowerShell, run `Get-FileHash .\Mindfuck-1.2.0-android.apk -Algorithm SHA256` and compare the result with `SHA256SUMS.txt`.
 
 ## Good to know
 

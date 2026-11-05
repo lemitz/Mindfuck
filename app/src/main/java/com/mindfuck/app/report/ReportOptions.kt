@@ -5,7 +5,7 @@ import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** Extra sections on top of the base report (scale, day table, summary, last-day notes). */
+/** Report language + extra sections on top of the base report (scale, day table, summary, last-day notes). */
 data class ReportOptions(
     val sleep: Boolean = false,
     val yesNo: Boolean = false,
@@ -13,11 +13,13 @@ data class ReportOptions(
     val custom: Boolean = false,
     val charts: Boolean = false,
     val allNotes: Boolean = false,
+    val language: ReportLanguage = ReportLanguage.RU,
 ) {
     fun save(context: Context) {
         prefs(context).edit()
             .putBoolean("sleep", sleep).putBoolean("yesNo", yesNo).putBoolean("meds", meds)
             .putBoolean("custom", custom).putBoolean("charts", charts).putBoolean("allNotes", allNotes)
+            .putString("language", language.name)
             .apply()
     }
 
@@ -32,6 +34,7 @@ data class ReportOptions(
                 custom = getBoolean("custom", false),
                 charts = getBoolean("charts", false),
                 allNotes = getBoolean("allNotes", false),
+                language = ReportLanguage.entries.firstOrNull { it.name == getString("language", null) } ?: ReportLanguage.RU,
             )
         }
     }
