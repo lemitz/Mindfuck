@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/lemitz/Mindfuck/releases"><img src="https://img.shields.io/badge/version-1.0.0-8ea6ff" alt="Version 1.0.0"></a>
+  <a href="https://github.com/lemitz/Mindfuck/releases"><img src="https://img.shields.io/badge/version-1.1.0-8ea6ff" alt="Version 1.1.0"></a>
   <img src="https://img.shields.io/badge/platform-Android%2014%2B-3ddc84" alt="Android 14+">
   <img src="https://img.shields.io/badge/built%20with-Kotlin%20%2B%20Compose-7f52ff" alt="Kotlin and Jetpack Compose">
   <img src="https://img.shields.io/badge/network-none-2ea043" alt="No network access">
@@ -71,6 +71,7 @@ The app's interface is in English; the report is always in Russian. There is no 
 - Asks the display for its fastest mode (120 Hz and up where the panel has it) and keeps drawing work light, so scrolling and swiping stay smooth
 - Realme's *Real Choice* typeface everywhere, in the app and in the PDF
 - Backup and restore of the whole diary as one JSON file
+- **Import from eMoods:** pick the `export.emoods` file and your eMoods history is added to the diary. Nothing is deleted or overwritten: days you already logged keep their values and only get empty fields filled in, medications are matched by name, and a backup of the diary is saved to `Downloads/Mindfuck` before the import
 
 > **Your data is health data.** Mindfuck never sends it anywhere, but the PDF reports and JSON backups you create are ordinary, unencrypted files. Share them only with people you mean to. See [SECURITY.md](SECURITY.md).
 
@@ -79,7 +80,7 @@ The app's interface is in English; the report is always in Russian. There is no 
 Download from the [Releases](https://github.com/lemitz/Mindfuck/releases) page:
 
 - `Mindfuck-<version>-android.apk` - open it on the phone and allow installing from your browser or file manager. Android 14 or newer.
-- `SHA256SUMS.txt` - checksums. In PowerShell: `Get-FileHash .\Mindfuck-1.0.0-android.apk -Algorithm SHA256`.
+- `SHA256SUMS.txt` - checksums. In PowerShell: `Get-FileHash .\Mindfuck-1.1.0-android.apk -Algorithm SHA256`.
 
 Mindfuck does not update itself. An APK signed with a different key cannot be installed over the existing app, and uninstalling deletes the diary: **export a backup first** (Settings → Export all data).
 

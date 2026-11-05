@@ -1,5 +1,6 @@
 package com.mindfuck.app.data
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.sync.Mutex
@@ -49,7 +50,7 @@ data class RangeData(
     }
 }
 
-class MoodRepository(db: AppDatabase) {
+class MoodRepository(private val db: AppDatabase) {
     val dao = db.dao()
     private val writeLock = Mutex()
 
@@ -99,6 +100,25 @@ class MoodRepository(db: AppDatabase) {
     suspend fun addTracker(name: String, type: Int) = dao.insertTracker(CustomTracker(name = name.trim(), type = type))
     suspend fun updateTracker(t: CustomTracker) = dao.updateTracker(t)
     suspend fun deleteTracker(id: Long) = dao.deleteTracker(id)
+
+    /**
+     * Merges an eMoods export into the diary in one transaction: nothing is deleted, logged
+     * values are never overwritten (see [EmoodsImport.plan]). Returns what was done.
+     */
+    suspend fun importEmoods(data: EmoodsImport.Data): EmoodsImport.Plan = writeLock.withLock {
+        db.withTransaction {
+            val plan = EmoodsImport.plan(data, dao.allEntries(), dao.allMeds(), dao.allIntakes())
+            val newIds = plan.newMeds.map { dao.insertMed(it) }
+            dao.upsertEntries(plan.upserts)
+            dao.addIntakes(
+                plan.intakes.map { (intake, key) ->
+                    val medId = if (key.startsWith("new:")) newIds[key.removePrefix("new:").toInt()] else key.toLong()
+                    MedIntake(intake.date.toEpochDay(), medId, intake.dose)
+                },
+            )
+            plan
+        }
+    }
 
     suspend fun allMeds() = dao.allMeds()
     suspend fun allTrackers() = dao.allTrackers()
