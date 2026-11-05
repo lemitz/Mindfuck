@@ -52,7 +52,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.mindfuck.app.report.ReportExporter
+import com.mindfuck.app.report.ReportLanguage
 import com.mindfuck.app.report.ReportOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import com.mindfuck.app.ui.ConfirmDialog
 import com.mindfuck.app.ui.app
 import kotlinx.coroutines.launch
@@ -126,8 +132,8 @@ fun ReportScreen() {
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    "The PDF is in Russian and follows the «Дневник настроения и симптомов» layout. " +
-                        "You'll pick extra sections in the next step.",
+                    "The PDF follows the «Дневник настроения и симптомов» layout. " +
+                        "You'll pick the language (Russian or English) and extra sections in the next step.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -250,7 +256,22 @@ private fun OptionsDialog(initial: ReportOptions, onDismiss: () -> Unit, onGener
         onDismissRequest = onDismiss,
         title = { Text("What goes into the report?") },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Report language",
+                    Modifier.padding(bottom = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                    ReportLanguage.entries.forEachIndexed { i, lang ->
+                        SegmentedButton(
+                            selected = o.language == lang,
+                            onClick = { o = o.copy(language = lang) },
+                            shape = SegmentedButtonDefaults.itemShape(i, ReportLanguage.entries.size),
+                        ) { Text(lang.label) }
+                    }
+                }
                 OptionRow(
                     "Base report", "Scale, day table, period summary, notes of the last day",
                     checked = true, enabled = false,

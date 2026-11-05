@@ -29,8 +29,8 @@ class ReportInput(
 )
 
 /**
- * Builds "Дневник настроения и симптомов" as an A4 PDF.
- * The base layout replicates the sample report; [ReportOptions] adds extra sections.
+ * Builds "Дневник настроения и симптомов" (or its English version) as an A4 PDF.
+ * The base layout replicates the sample report; [ReportOptions] picks the language and adds extra sections.
  */
 class PdfReportGenerator(private val context: Context) {
 
@@ -50,13 +50,18 @@ class PdfReportGenerator(private val context: Context) {
         val BORDER = Color.rgb(0x44, 0x44, 0x44)
         val MUTED = Color.rgb(0x88, 0x88, 0x88)
 
-        val BASE_ROWS = listOf(
-            "Депрессия" to Gender.FEMININE,
-            "Повышенное настроение" to Gender.NEUTER,
-            "Раздражительность" to Gender.FEMININE,
-            "Тревога" to Gender.FEMININE,
-        )
     }
+
+    /** Wording of the report being generated; set from [ReportOptions.language]. */
+    private var t: ReportText = RuReportText
+
+    private val baseRows
+        get() = listOf(
+            t.depression to Gender.FEMININE,
+            t.elevated to Gender.NEUTER,
+            t.irritability to Gender.FEMININE,
+            t.anxiety to Gender.FEMININE,
+        )
 
     private val regular = AppFonts.typeface(context, AppFonts.REGULAR)
     private val bold = AppFonts.typeface(context, AppFonts.BOLD)
@@ -86,6 +91,7 @@ class PdfReportGenerator(private val context: Context) {
     private val fill = Paint().apply { style = Paint.Style.FILL }
 
     fun generate(input: ReportInput, options: ReportOptions, out: File) {
+        t = options.language.text
         val doc = PdfDocument()
         try {
             Writer(doc).apply {
@@ -133,7 +139,7 @@ class PdfReportGenerator(private val context: Context) {
 
         private fun closePage() {
             val p = page ?: return
-            val text = "стр. $pageNo"
+            val text = t.page(pageNo)
             c.drawText(text, PAGE_W - MARGIN_X - pFooter.measureText(text), PAGE_H - 30f, pFooter)
             doc.finishPage(p)
             page = null
@@ -248,26 +254,26 @@ class PdfReportGenerator(private val context: Context) {
     // ===================================================================== sections
 
     private fun Writer.header(input: ReportInput) {
-        val t = layout("Дневник настроения и симптомов", pTitle, CONTENT_W, Layout.Alignment.ALIGN_CENTER)
-        draw(t, MARGIN_X, y + 6f)
-        y += t.height + 12f
-        val s = layout("Период: ${RuText.period(input.from, input.to)}", pSubtitle, CONTENT_W, Layout.Alignment.ALIGN_CENTER)
+        val titleLayout = layout(t.title, pTitle, CONTENT_W, Layout.Alignment.ALIGN_CENTER)
+        draw(titleLayout, MARGIN_X, y + 6f)
+        y += titleLayout.height + 12f
+        val s = layout(t.periodLine(input.from, input.to), pSubtitle, CONTENT_W, Layout.Alignment.ALIGN_CENTER)
         draw(s, MARGIN_X, y)
         y += s.height + 4f
     }
 
     private fun Writer.legend() {
-        heading("Шкала значений в таблице")
+        heading(t.legendHeading)
         val widths = floatArrayOf(80f, 150f, 170f)
         val x = MARGIN_X + (CONTENT_W - widths.sum()) / 2f
         val center = Layout.Alignment.ALIGN_CENTER
-        val marks = listOf("белая клетка", "светло-серая клетка", "серая клетка", "чёрная клетка")
-        val levels = listOf("нет симптома", "лёгкая степень", "умеренная степень", "тяжёлая степень")
+        val marks = t.legendMarks
+        val levels = t.legendLevels
         val rows = buildList {
             add(listOf(
-                Cell("Значение", pCellBold, HEADER_FILL, center),
-                Cell("Уровень", pCellBold, HEADER_FILL, center),
-                Cell("Как отмечено", pCellBold, HEADER_FILL, center),
+                Cell(t.legendValue, pCellBold, HEADER_FILL, center),
+                Cell(t.legendLevel, pCellBold, HEADER_FILL, center),
+                Cell(t.legendMarked, pCellBold, HEADER_FILL, center),
             ))
             for (v in 0..3) add(listOf(
                 Cell(v.toString(), pCellBold, LEVEL_FILL[v], center, LEVEL_TEXT[v]),
@@ -287,16 +293,16 @@ class PdfReportGenerator(private val context: Context) {
 
     private fun yesNoCell(v: Boolean?): Cell = when (v) {
         null -> Cell(RuText.DASH, pCell, Color.WHITE, Layout.Alignment.ALIGN_CENTER, MUTED)
-        true -> Cell("да", pCellBold, LEVEL_FILL[1], Layout.Alignment.ALIGN_CENTER)
-        false -> Cell("нет", pCell, Color.WHITE, Layout.Alignment.ALIGN_CENTER)
+        true -> Cell(t.yes, pCellBold, LEVEL_FILL[1], Layout.Alignment.ALIGN_CENTER)
+        false -> Cell(t.no, pCell, Color.WHITE, Layout.Alignment.ALIGN_CENTER)
     }
 
     private fun textCell(text: String?, paint: TextPaint = pCell): Cell =
         if (text == null) Cell(RuText.DASH, pCell, Color.WHITE, Layout.Alignment.ALIGN_CENTER, MUTED)
         else Cell(text, paint, Color.WHITE, Layout.Alignment.ALIGN_CENTER)
 
-    private fun reportTrackers(input: ReportInput): List<CustomTracker> = input.trackers.filter { t ->
-        t.active || input.range.custom.values.any { it.containsKey(t.id) }
+    private fun reportTrackers(input: ReportInput): List<CustomTracker> = input.trackers.filter { tr ->
+        tr.active || input.range.custom.values.any { it.containsKey(tr.id) }
     }
 
     private fun reportMeds(input: ReportInput): List<Medication> = input.meds.filter { m ->
@@ -316,11 +322,11 @@ class PdfReportGenerator(private val context: Context) {
             val widths = FloatArray(block.size + 1) { if (it == 0) LABEL_COL else colW }
             val center = Layout.Alignment.ALIGN_CENTER
             val cells = buildList {
-                add(listOf(Cell("День", pCell, HEADER_FILL)) + block.map { Cell(it.dayOfMonth.toString(), pDayNum, HEADER_FILL, center) })
+                add(listOf(Cell(t.dayHeader, pCell, HEADER_FILL)) + block.map { Cell(it.dayOfMonth.toString(), pDayNum, HEADER_FILL, center) })
                 // second header row: weekdays; month name on the left for multi-week tables
-                val month = if (days.size > DAYS_PER_BLOCK) RuText.rangeShort(block.first(), block.last()) else ""
+                val month = if (days.size > DAYS_PER_BLOCK) t.rangeShort(block.first(), block.last()) else ""
                 add(listOf(Cell(month, pCellSmall, HEADER_FILL)) +
-                    block.map { Cell(RuText.weekday(it), pCellSmall, HEADER_FILL, center) })
+                    block.map { Cell(t.weekday(it), pCellSmall, HEADER_FILL, center) })
                 rows.forEach { row -> add(listOf(Cell(row.label, pCell)) + block.map(row.cell)) }
             }
             val minH: (Int) -> Float = { i ->
@@ -348,73 +354,72 @@ class PdfReportGenerator(private val context: Context) {
             { r.entry(it.toEpochDay())?.irritability },
             { r.entry(it.toEpochDay())?.anxiety },
         )
-        BASE_ROWS.forEachIndexed { i, (label, _) -> rows += DayRow(label, true) { levelCell(picks[i](it)) } }
-        if (o.sleep) rows += DayRow("Сон, ч", false) { d ->
-            textCell(r.entry(d.toEpochDay())?.sleepHours?.let(RuText::hours))
+        baseRows.forEachIndexed { i, (label, _) -> rows += DayRow(label, true) { levelCell(picks[i](it)) } }
+        if (o.sleep) rows += DayRow(t.sleepRow, false) { d ->
+            textCell(r.entry(d.toEpochDay())?.sleepHours?.let(t::hours))
         }
         if (o.yesNo) {
-            rows += DayRow("Психотические симптомы", false) { yesNoCell(r.entry(it.toEpochDay())?.psychotic) }
-            rows += DayRow("Психотерапия", false) { yesNoCell(r.entry(it.toEpochDay())?.therapy) }
+            rows += DayRow(t.psychotic, false) { yesNoCell(r.entry(it.toEpochDay())?.psychotic) }
+            rows += DayRow(t.therapy, false) { yesNoCell(r.entry(it.toEpochDay())?.therapy) }
         }
-        if (o.custom) reportTrackers(input).forEach { t ->
-            rows += if (t.isScale) DayRow(t.name, true) { levelCell(r.custom(it.toEpochDay(), t.id)) }
-            else DayRow(t.name, false) { yesNoCell(r.custom(it.toEpochDay(), t.id)?.let { v -> v == 1 }) }
+        if (o.custom) reportTrackers(input).forEach { tr ->
+            rows += if (tr.isScale) DayRow(tr.name, true) { levelCell(r.custom(it.toEpochDay(), tr.id)) }
+            else DayRow(tr.name, false) { yesNoCell(r.custom(it.toEpochDay(), tr.id)?.let { v -> v == 1 }) }
         }
-        dayBlocks("Таблица по дням", dates(input), rows)
+        dayBlocks(t.dayTableHeading, dates(input), rows)
     }
 
     private fun Writer.summary(input: ReportInput, o: ReportOptions) {
-        heading("Краткое описание по периодам")
+        heading(t.summaryHeading)
         val r = input.range
         val days = dates(input)
         fun levels(pick: (Long) -> Int?) = days.map { pick(it.toEpochDay()) }
 
         val items = ArrayList<Pair<String, String>>()
-        items += "Депрессия" to RuText.levelSummary(days, levels { r.entry(it)?.depression }, Gender.FEMININE)
-        items += "Повышенное настроение" to RuText.levelSummary(days, levels { r.entry(it)?.elevated }, Gender.NEUTER)
-        items += "Раздражительность" to RuText.levelSummary(days, levels { r.entry(it)?.irritability }, Gender.FEMININE)
-        items += "Тревога" to RuText.levelSummary(days, levels { r.entry(it)?.anxiety }, Gender.FEMININE)
+        items += t.depression to t.levelSummary(days, levels { r.entry(it)?.depression }, Gender.FEMININE)
+        items += t.elevated to t.levelSummary(days, levels { r.entry(it)?.elevated }, Gender.NEUTER)
+        items += t.irritability to t.levelSummary(days, levels { r.entry(it)?.irritability }, Gender.FEMININE)
+        items += t.anxiety to t.levelSummary(days, levels { r.entry(it)?.anxiety }, Gender.FEMININE)
         if (o.yesNo) {
-            items += "Психотические симптомы" to RuText.yesNoSummary(days, days.map { r.entry(it.toEpochDay())?.psychotic })
-            items += "Психотерапия" to RuText.yesNoSummary(days, days.map { r.entry(it.toEpochDay())?.therapy })
+            items += t.psychotic to t.yesNoSummary(days, days.map { r.entry(it.toEpochDay())?.psychotic })
+            items += t.therapy to t.yesNoSummary(days, days.map { r.entry(it.toEpochDay())?.therapy })
         }
-        if (o.custom) reportTrackers(input).forEach { t ->
-            val values = days.map { r.custom(it.toEpochDay(), t.id) }
-            items += t.name to if (t.isScale) RuText.levelSummary(days, values, Gender.NEUTER)
-            else RuText.yesNoSummary(days, values.map { v -> v?.let { it == 1 } })
+        if (o.custom) reportTrackers(input).forEach { tr ->
+            val values = days.map { r.custom(it.toEpochDay(), tr.id) }
+            items += tr.name to if (tr.isScale) t.levelSummary(days, values, Gender.NEUTER)
+            else t.yesNoSummary(days, values.map { v -> v?.let { it == 1 } })
         }
 
         val widths = floatArrayOf(LABEL_COL, CONTENT_W - LABEL_COL)
         val center = Layout.Alignment.ALIGN_CENTER
         val rows = buildList {
-            add(listOf(Cell("Показатель", pCellBold, HEADER_FILL, center), Cell("Что отмечено", pCellBold, HEADER_FILL, center)))
+            add(listOf(Cell(t.summaryIndicator, pCellBold, HEADER_FILL, center), Cell(t.summaryMarked, pCellBold, HEADER_FILL, center)))
             items.forEach { (k, v) -> add(listOf(Cell(k, pCell), Cell(v, pCell))) }
         }
         table(MARGIN_X, widths, rows, headerRows = 1, minHeights = { if (it == 0) 18f else 28f }, padV = 4f)
     }
 
     private fun Writer.sleepSummary(input: ReportInput) {
-        heading("Сон")
+        heading(t.sleepHeading)
         val total = dates(input).size
         val logged = dates(input).mapNotNull { d -> input.range.entry(d.toEpochDay())?.sleepHours?.let { d to it } }
         if (logged.isEmpty()) {
-            paragraph("Данные о сне за период не вносились.")
+            paragraph(t.sleepNoData)
             return
         }
         val avg = logged.map { it.second }.average().toFloat()
         val min = logged.minBy { it.second }
         val max = logged.maxBy { it.second }
-        paragraph("Средняя продолжительность сна: ${RuText.hours(Math.round(avg * 10f) / 10f)} ч.")
-        paragraph("Минимум: ${RuText.hours(min.second)} ч (${RuText.dayLong(min.first)}). " +
-            "Максимум: ${RuText.hours(max.second)} ч (${RuText.dayLong(max.first)}).")
-        paragraph("Данные внесены за ${logged.size} из ${RuText.days(total)}.")
+        paragraph(t.sleepAverage(t.hours(Math.round(avg * 10f) / 10f)))
+        paragraph(t.sleepMinMax(t.hours(min.second), min.first, t.hours(max.second), max.first))
+        paragraph(t.sleepLogged(logged.size, total))
     }
 
     private fun Writer.medications(input: ReportInput) {
         val meds = reportMeds(input)
-        heading("Приём лекарств")
+        heading(t.medsHeading)
         if (meds.isEmpty()) {
-            paragraph("Лекарства не добавлены.")
+            paragraph(t.medsNone)
             return
         }
         val r = input.range
@@ -442,16 +447,14 @@ class PdfReportGenerator(private val context: Context) {
             val doses = days.mapNotNull { r.doseOn(it.toEpochDay(), m) }
             val pct = Math.round(doses.size * 100f / days.size)
             val byDose = doses.filter { it.isNotBlank() }.groupingBy { it }.eachCount()
-            val doseText = if (byDose.size > 1) {
-                "; дозировки: " + byDose.entries.joinToString(", ") { (d, n) -> "$d ${RuText.DASH} ${RuText.days(n)}" }
-            } else ""
+            val doseText = if (byDose.size > 1) t.medDoses(byDose.map { (d, n) -> d to n }) else ""
             val name = if (byDose.size == 1) "${m.name} ${byDose.keys.first()}" else m.name
-            paragraph("• $name: принято ${doses.size} из ${RuText.days(days.size)} ($pct%)$doseText", gapAfter = 2f)
+            paragraph(t.medTaken(name, doses.size, days.size, pct, doseText), gapAfter = 2f)
         }
     }
 
     private fun Writer.charts(input: ReportInput, o: ReportOptions) {
-        heading("Графики")
+        heading(t.chartsHeading)
         val u = 0.72f
         val palette = ChartPalette(
             text = Color.rgb(0x55, 0x55, 0x55),
@@ -469,7 +472,7 @@ class PdfReportGenerator(private val context: Context) {
         val left = MARGIN_X + 4f
         val width = CONTENT_W - 8f
 
-        val levelLabels = BASE_ROWS.map { it.first }.toMutableList()
+        val levelLabels = baseRows.map { it.first }.toMutableList()
         val levelRows = mutableListOf(
             days.map { r.entry(it.toEpochDay())?.depression },
             days.map { r.entry(it.toEpochDay())?.elevated },
@@ -479,13 +482,13 @@ class PdfReportGenerator(private val context: Context) {
         val ynLabels = mutableListOf<String>()
         val ynRows = mutableListOf<List<Boolean?>>()
         if (o.yesNo) {
-            ynLabels += "Психотические симптомы"; ynRows += days.map { r.entry(it.toEpochDay())?.psychotic }
-            ynLabels += "Психотерапия"; ynRows += days.map { r.entry(it.toEpochDay())?.therapy }
+            ynLabels += t.psychotic; ynRows += days.map { r.entry(it.toEpochDay())?.psychotic }
+            ynLabels += t.therapy; ynRows += days.map { r.entry(it.toEpochDay())?.therapy }
         }
-        if (o.custom) reportTrackers(input).forEach { t ->
-            val values = days.map { r.custom(it.toEpochDay(), t.id) }
-            if (t.isScale) { levelLabels += t.name; levelRows += values }
-            else { ynLabels += t.name; ynRows += values.map { v -> v?.let { it == 1 } } }
+        if (o.custom) reportTrackers(input).forEach { tr ->
+            val values = days.map { r.custom(it.toEpochDay(), tr.id) }
+            if (tr.isScale) { levelLabels += tr.name; levelRows += values }
+            else { ynLabels += tr.name; ynRows += values.map { v -> v?.let { it == 1 } } }
         }
         val medRows = if (o.meds) reportMeds(input).map { m ->
             MedRow(m.name, days.map { r.doseOn(it.toEpochDay(), m) })
@@ -493,7 +496,7 @@ class PdfReportGenerator(private val context: Context) {
         val logged = days.map { r.isLogged(it.toEpochDay()) }
 
         val labelW = chart.labelColumnWidth(levelLabels + ynLabels + medRows.map { it.label }, LABEL_COL)
-        val missing = LegendMark.MISSING to "нет данных"
+        val missing = LegendMark.MISSING to t.noData
 
         fun block(title: String, h: Float, legend: List<Pair<LegendMark, String>>, drawIt: (Float) -> Unit) {
             val legendH = chart.legendHeight(legend, width)
@@ -509,33 +512,32 @@ class PdfReportGenerator(private val context: Context) {
         if (o.sleep) {
             val sleep = days.map { r.entry(it.toEpochDay())?.sleepHours }
             val known = sleep.filterNotNull()
-            val avg = if (known.isEmpty()) "" else
-                " (среднее ${RuText.hours(Math.round(known.average().toFloat() * 10f) / 10f)} ч, пунктир)"
-            block("Сон, часы$avg", chart.sleepHeight(), emptyList()) { top ->
+            val avg = if (known.isEmpty()) null else t.hours(Math.round(known.average().toFloat() * 10f) / 10f)
+            block(t.sleepChartTitle(avg), chart.sleepHeight(), emptyList()) { top ->
                 chart.drawSleep(c, left, top, width, chart.sleepAxisWidth(), days, sleep)
             }
         }
         block(
-            "Симптомы (от низкого к высокому)", chart.levelsHeight(levelRows.size),
+            t.symptomsChartTitle, chart.levelsHeight(levelRows.size),
             listOf(
-                LegendMark.NONE to "нет", LegendMark.MILD to "лёгкая", LegendMark.MODERATE to "умеренная",
-                LegendMark.SEVERE to "тяжёлая", missing,
+                LegendMark.NONE to t.chartLevels[0], LegendMark.MILD to t.chartLevels[1],
+                LegendMark.MODERATE to t.chartLevels[2], LegendMark.SEVERE to t.chartLevels[3], missing,
             ),
         ) { top ->
             chart.drawLevels(c, left, top, width, labelW, days, levelLabels, levelRows)
         }
         if (ynRows.isNotEmpty()) block(
-            "Да / нет", chart.yesNoHeight(ynRows.size),
-            listOf(LegendMark.YES to "да", LegendMark.NO to "нет", missing),
+            t.yesNoChartTitle, chart.yesNoHeight(ynRows.size),
+            listOf(LegendMark.YES to t.yes, LegendMark.NO to t.no, missing),
         ) { top ->
             chart.drawYesNo(c, left, top, width, labelW, days, ynLabels, ynRows)
         }
         if (medRows.isNotEmpty()) block(
-            "Лекарства", chart.medsHeight(medRows.size),
+            t.medsChartTitle, chart.medsHeight(medRows.size),
             listOf(
-                LegendMark.YES to "принято", LegendMark.NO to "не принято", missing,
-                LegendMark.DOSE_LOW to "меньшая доза", LegendMark.DOSE_HIGH to "большая доза",
-                LegendMark.DOSE to "смена дозировки",
+                LegendMark.YES to t.medTakenMark, LegendMark.NO to t.medNotTakenMark, missing,
+                LegendMark.DOSE_LOW to t.doseLower, LegendMark.DOSE_HIGH to t.doseHigher,
+                LegendMark.DOSE to t.doseChange,
             ),
         ) { top ->
             chart.drawMeds(c, left, top, width, labelW, days, medRows, logged)
@@ -550,14 +552,14 @@ class PdfReportGenerator(private val context: Context) {
         if (withNotes.isEmpty()) return
 
         if (o.allNotes && withNotes.size > 1) {
-            heading("Записи самонаблюдения")
+            heading(t.notesHeading)
             withNotes.forEachIndexed { i, (d, lines) ->
-                subheading("${RuText.dayLong(d)}, ${RuText.weekday(d).lowercase()}", gapBefore = if (i == 0) 0f else 10f)
+                subheading(t.notesDay(d), gapBefore = if (i == 0) 0f else 10f)
                 lines.forEach { paragraph("• $it", gapAfter = 3f) }
             }
         } else {
             val (d, lines) = withNotes.last()
-            heading("Записи самонаблюдения за ${RuText.dayLong(d)}")
+            heading(t.notesLastDay(d))
             lines.forEach { paragraph("• $it", gapAfter = 3f) }
         }
     }
